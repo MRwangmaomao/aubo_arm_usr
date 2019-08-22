@@ -58,7 +58,7 @@
   <build_depend>tf</build_depend>
   <build_depend>dh_hand_driver</build_depend>
   <build_depend>moveit_core</build_depend>
-  <build_depend>moveit_ros_planning_interface</build_depend>
+  <build_depend>moveit_ros_planning_interface</build_depend> 
 
   <build_export_depend>apriltag_ros</build_export_depend>
   <build_export_depend>geometry_msgs</build_export_depend>

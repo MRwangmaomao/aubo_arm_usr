@@ -29,12 +29,6 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
 )
- 
-
-
-add_executable(hand_client   
-src/test_grasp.cpp)
-target_link_libraries(hand_client  ${catkin_LIBRARIES})
 
 # add_executable(moveit_random_demo src/moveit_study/moveit_random_demo.cpp)
 # target_link_libraries(moveit_random_demo ${catkin_LIBRARIES})
