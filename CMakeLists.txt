@@ -12,15 +12,33 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   dh_hand_driver
   moveit_msgs
-  moveit_ros_perception
+  moveit_ros_perception 
+  trajectory_msgs 
+  interactive_markers 
+  moveit_core
+  moveit_visual_tools
+  moveit_ros_planning
   moveit_ros_planning_interface
-  trajectory_msgs
+  pluginlib
+  geometric_shapes
+  pcl_ros
+  pcl_conversions
+  rosbag
+  tf2_ros
+  tf2_eigen
+  tf2_geometry_msgs 
+  ur_kinematics
+  find_cup_ros
 )
- 
-catkin_package(
-    
- INCLUDE_DIRS include
- LIBRARIES aubo_arm_usr
+
+find_package(Boost REQUIRED system filesystem date_time thread)
+
+
+catkin_package( 
+ INCLUDE_DIRS 
+ include
+ LIBRARIES 
+ aubo_arm_usr
  CATKIN_DEPENDS apriltag_ros geometry_msgs roscpp rospy sensor_msgs std_msgs tf moveit_core moveit_ros_planning_interface
  DEPENDS system_lib
 )
@@ -41,6 +59,9 @@ target_link_libraries(moveit_ik_demo ${catkin_LIBRARIES})
 
 add_executable(moveit_cartesian_demo src/moveit_study/moveit_cartesian_demo.cpp)
 target_link_libraries(moveit_cartesian_demo ${catkin_LIBRARIES})
+
+add_executable(grasp_april_cube_demo src/grasp_april_cube.cpp)
+target_link_libraries(grasp_april_cube_demo ${catkin_LIBRARIES})
 
 
 install(PROGRAMS 
