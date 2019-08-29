@@ -1,11 +1,11 @@
 <launch>
 
-  <include file="$(find apriltag_ros)/launch/kinectv2_detection.launch" />
+  <!--<include file="$(find apriltag_ros)/launch/kinectv2_detection.launch" />-->
 
   <include file="$(find dh_hand_driver)/launch/dh_hand_controller.launch" />
   
 
-  <include file="$(find kinect2_bridge)/launch/kinect2_mini_bridge.launch" />
+  <!--<include file="$(find kinect2_bridge)/launch/kinect2_bridge.launch" />-->
   
   <node pkg="dh_hand_driver" type="hand_controller_usr_client" name="dh_hand_driver_client"/>
 
@@ -14,5 +14,7 @@
         <arg name="robot_ip" value="192.168.10.5" />
   </include>
 
-  <node pkg="aubo_arm_usr" type="grasp_april_cube_demo" name="apriltag_cube_grasp"/>
+  <!--<include file="$(find gpd)/launch/aubo_kinectV2_15channels.launch"/>  -->
+  
+  
 </launch>

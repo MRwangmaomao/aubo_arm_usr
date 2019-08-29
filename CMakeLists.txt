@@ -44,6 +44,7 @@ catkin_package(
 )
  
 include_directories(
+  include ${catkin_INCLUDE_DIRS}
   include
   ${catkin_INCLUDE_DIRS}
 )
@@ -62,6 +63,9 @@ target_link_libraries(moveit_cartesian_demo ${catkin_LIBRARIES})
 
 add_executable(grasp_april_cube_demo src/grasp_april_cube.cpp)
 target_link_libraries(grasp_april_cube_demo ${catkin_LIBRARIES})
+
+add_executable(aubo_3D_struct src/aubo_3D_struct.cpp)
+target_link_libraries(aubo_3D_struct ${catkin_LIBRARIES})
 
 
 install(PROGRAMS 
