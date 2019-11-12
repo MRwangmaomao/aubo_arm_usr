@@ -5,7 +5,7 @@
   <include file="$(find dh_hand_driver)/launch/dh_hand_controller.launch" />
   
 
-  <!--<include file="$(find kinect2_bridge)/launch/kinect2_bridge.launch" />-->
+  <include file="$(find kinect2_bridge)/launch/kinect2_bridge.launch" />
   
   <node pkg="dh_hand_driver" type="hand_controller_usr_client" name="dh_hand_driver_client"/>
 
@@ -13,7 +13,7 @@
         <arg name="sim" value="false" />
         <arg name="robot_ip" value="192.168.10.5" />
   </include>
-
+  <node pkg="aubo_arm_usr" type="aubo_3D_struct" name="aubo_3D_struct"/>
   <!--<include file="$(find gpd)/launch/aubo_kinectV2_15channels.launch"/>  -->
   
   
