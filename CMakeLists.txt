@@ -36,11 +36,12 @@ find_package(Boost REQUIRED system filesystem date_time thread)
 
 catkin_package( 
  INCLUDE_DIRS 
- include
+#  include
  LIBRARIES 
  aubo_arm_usr
- CATKIN_DEPENDS apriltag_ros geometry_msgs roscpp rospy sensor_msgs std_msgs tf moveit_core moveit_ros_planning_interface
- DEPENDS system_lib
+#  CATKIN_DEPENDS 
+ apriltag_ros geometry_msgs roscpp rospy sensor_msgs std_msgs tf moveit_core moveit_ros_planning_interface
+#  DEPENDS system_lib
 )
  
 include_directories(
