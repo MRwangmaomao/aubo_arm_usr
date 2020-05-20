@@ -49,6 +49,8 @@
 
 9, 圆形口杯子若干;
 
+10, 下载其他包：ros-kinetic-ompl  libompl  ros-kinetic-ompl   ros-kinetic-ompl  ros-kinetic-moveit
+
 - 各个模块简单使用： 
 
 ##### setup aubo-i5 arm

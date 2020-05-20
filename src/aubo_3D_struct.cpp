@@ -67,7 +67,7 @@ double T_Tag[16] = {0};   // 相机光心相对于机械臂基座的变换
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_base_arm(new pcl::PointCloud<pcl::PointXYZRGB>); 
 
 // 机械臂需要到达的四个位姿
-const int take_photo_pose_num = 2;
+const int take_photo_pose_num = 4;
 std::vector<double> joint_place_saft = {79.57/57.3, -2.13/57.3, -53.65/57.3, 17.71/57.3, -93.67/57.3, -5.97/57.3};
 std::vector<double> joint_place_pose1 = {117.08/57.3, 5.63/57.3, -63.71/57.3, 17.29/57.3, -113.88/57.3, 26.49/57.3};
 std::vector<double> joint_place_pose2 = {79.57/57.3, -2.13/57.3, -53.65/57.3, 17.71/57.3, -93.67/57.3, -5.97/57.3};
@@ -186,8 +186,8 @@ int main(int argc, char *argv[])
     // ---------------------------------------    
     joint_place_all_pose.push_back(joint_place_pose1);
     joint_place_all_pose.push_back(joint_place_pose2); 
-    // joint_place_all_pose.push_back(joint_place_pose3);
-    // joint_place_all_pose.push_back(joint_place_pose4);  
+    joint_place_all_pose.push_back(joint_place_pose3);
+    joint_place_all_pose.push_back(joint_place_pose4);  
 
     // --------------------------------------- 
     // 首先到达拍照安全过渡位
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
         // T_points_base = T; 
         ROS_INFO_STREAM("Get points and Processing ...");
         get_cloud_flag = false;
-        while(!get_cloud_flag);  
+        // while(!get_cloud_flag);  
     }
  
     pcl::visualization::CloudViewer viewer("Cloud Viewer");

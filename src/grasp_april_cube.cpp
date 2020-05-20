@@ -4,8 +4,7 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 
-#include <cv_bridge/cv_bridge.h>
-// #include <XmlRpcException.h>
+#include <cv_bridge/cv_bridge.h> 
 
 #include <memory>
 #include <string> 
@@ -29,8 +28,8 @@
 #include <eigen3/Eigen/Geometry>
 
 #include "std_msgs/Int8.h"
-#include "apriltag_ros/AprilTagDetection.h"
-#include "apriltag_ros/AprilTagDetectionArray.h" 
+#include "apriltag_arm_ros/AprilTagDetection.h"
+#include "apriltag_arm_ros/AprilTagDetectionArray.h" 
 
 using namespace Eigen; 
 
@@ -43,27 +42,15 @@ using namespace Eigen;
 const double Jlimit_min[6] = {-PI, -PI, -PI, -PI, -PI, -PI};
 const double Jlimit_max[6] = {PI, PI, PI, PI, PI, PI};
 
-// 机械臂连杆参数
-// const double d1 =  0.122;
-// const double a2 =  0.408;
-// const double a3 =  0.376; 
-// const double d4 =  0.1215;
-// const double d5 =  0.1025;
-// const double d6 =  0.094;
-
+// 机械臂连杆参数 
 const double a2 =  0.408;
 const double a3 =  0.376;
 const double d1 =  0.122;
 const double d2 =  0.1215;
 const double d5 =  0.1025;
-const double d6 =  0.094;
-// const double d1 =  0.1518;
-// const double a2 = -0.2435;
-// const double a3 = -0.213025;
-// const double d4 =  0.13095;
-// const double d5 =  0.0855;
-// const double d6 =  0.09195;
-const double ltool = 0.185;
+const double d6 =  0.094; 
+
+const double ltool = 0.16;
 
 // 跟踪目标的存在与更新变量
 bool object_flag = false;
@@ -96,7 +83,7 @@ int inverse_jointlimited(const double* T, double* q_sols, double q6_des);
 double antiSinCos(double sA, double cA);
 
 void rosinfo_joint(std::vector<std::string> joint_names, std::vector<double> j_values);
-void handle_tag_in_camera(const apriltag_ros::AprilTagDetectionArray::ConstPtr& tag);
+void handle_tag_in_camera(const apriltag_arm_ros::AprilTagDetectionArray::ConstPtr& tag);
 void thread_function();
 bool tarPose_nearJ_bestJ(geometry_msgs::Pose tarPose, std::vector<double> nearJ, std::vector<double> *bestJ);
 bool tarTrans_nearJ_bestJ(tf::StampedTransform tarTrans, std::vector<double> nearJ, std::vector<double> *bestJ);
@@ -218,26 +205,31 @@ int main(int argc, char **argv)
     ROS_INFO_NAMED("tutorial", "End effector link: %s", move_group.getEndEffectorLink().c_str());
 
 
-    move_group.setMaxVelocityScalingFactor(0.15);
-    move_group.setMaxAccelerationScalingFactor(0.1);
+    move_group.setMaxVelocityScalingFactor(0.70);
+    move_group.setMaxAccelerationScalingFactor(0.4);
 
     // -------------------------------------------
     // 变量定义
     // -------------------------------------------
-    std::vector<double> joint_place_saft = {79.57/57.3, -2.13/57.3, -53.65/57.3, 17.71/57.3, -93.67/57.3, -5.97/57.3};
-    std::vector<double> joint_place_p1 = {79.57/57.3, -2.13/57.3, -53.65/57.3, 17.71/57.3, -93.67/57.3, -5.97/57.3};
-    const double place_dx = -0.05;
-    const double place_dy = -0.05*0.9;
-    const double place_up = 0.05;
-    const double place_down = 0.054;
+    std::vector<double> joint_place_saft = {86.8162/57.3, -7.29386/57.3, -71.5749/57.3, 25.4344/57.3, -90.533/57.3, -5.63/57.3};  //安全过渡点
+    std::vector<double> joint_place_p1 = {86.8193/57.3, 23.1162/57.3, -72.1184/57.3, -1.72438/57.3, -90.5764/57.3, -5.0056/57.3}; //第一次放置的位置
+    // const double place_dx = -0.05;
+    // const double place_dy = -0.05*0.9;
+    // const double place_up = 0.05;
+    // const double place_down = 0.054;
+    const double place_dx = 0;
+    const double place_dy = 0;
+    const double place_up = 0;
+    const double place_down = 0;
+    //第n次放置位置变量
     geometry_msgs::Pose place_pose0;    
-    place_pose0.position.x = -0.0017;
-    place_pose0.position.y = 0.3005;
-    place_pose0.position.z = 0.1962; 
-    place_pose0.orientation.x = -0.6571; 
-    place_pose0.orientation.y = 0.2649; 
-    place_pose0.orientation.z = 0.6541; 
-    place_pose0.orientation.w = 0.2649;
+    place_pose0.position.x = 0.084;
+    place_pose0.position.y = -0.625;
+    place_pose0.position.z = 0.385;  
+    place_pose0.orientation.x = 0.999; 
+    place_pose0.orientation.y = 0.016; 
+    place_pose0.orientation.z = -0.003; 
+    place_pose0.orientation.w = -0.031;
 
     // 通用变量:计算过程变量
     double* T = new double[16];
@@ -246,6 +238,7 @@ int main(int argc, char **argv)
     int num_sols;
     tf::Quaternion q;
     q.setRPY(0.0, 0.0, 0.0);
+
     // 通用变量:获取当前状态
     geometry_msgs::Pose pose_current;
     geometry_msgs::Pose pose_base_link_current;
@@ -260,54 +253,7 @@ int main(int argc, char **argv)
 
     geometry_msgs::Pose pose_Tag;
     double* T_Tag = new double[16];
-    
-    // 定时间间隔打印当前的pose和关节角度;
-    // std::vector<double> joint_values0;
-    // while (1)
-    // {
-    //   pose_rec1 = move_group.getCurrentPose();
-    //   printf("pose px = %1.4f, py = %1.4f, pz = %1.4f, rx = %1.4f, ry = %1.4f, rz = %1.4f, rw = %1.4f \n", 
-    //           pose_rec1.pose.position.x, pose_rec1.pose.position.y,pose_rec1.pose.position.z,
-    //           pose_rec1.pose.orientation.x, pose_rec1.pose.orientation.y, pose_rec1.pose.orientation.z, pose_rec1.pose.orientation.w);
-    //   joint_values0 = move_group.getCurrentJointValues();
-    //   for (int jx=0; jx<6; jx++)
-    //   {
-    //     printf("joint axis = %d, value = %1.4f \n", jx, joint_values0[jx]*180.0/PI);
-
-    //     jq[jx] = (double)(joint_values0[jx]);
-    //   }
-
-    //   // pose_to_mat(move_group.getCurrentPose().pose, T);
-    //   // num_sols = inverse(T, q_sols, 0.0);
-    //   // printf("num_sols = %d \n", num_sols);
-    //   // for(int i=0; i<num_sols; i++)
-    //   // {
-    //   //     for (int j=0; j<6; j++)
-    //   //     {
-    //   //       if (q_sols[i*6+j] > Jlimit_max[j])
-    //   //       {
-    //   //           q_sols[i*6+j] -= 2*PI;
-    //   //       }
-    //   //       else if (q_sols[i*6+j] < Jlimit_min[j])
-    //   //       {
-    //   //           q_sols[i*6+j] += 2*PI;
-    //   //       }
-    //   //       else
-    //   //       {
-    //   //           // none
-    //   //       }
-    //   //     }
-        
-    //   //   printf("%1.6f %1.6f %1.6f %1.6f %1.6f %1.6f\n", 
-    //   //     q_sols[i*6+0]*180.0/PI, q_sols[i*6+1]*180.0/PI, q_sols[i*6+2]*180.0/PI, q_sols[i*6+3]*180.0/PI, q_sols[i*6+4]*180.0/PI, q_sols[i*6+5]*180.0/PI);
-    //   // }
-    //   forward(jq, T);
-    //   printf("forward T x = %1.4f, y = %1.4f, z = %1.4f \n", *(T+3), *(T+3+4),*(T+3+8));
-
-    //   ros::Duration(2.0).sleep();
-    // }
-
- 
+     
     ros::Rate rate(1.0);
 
     // ---------------------------------------
@@ -321,7 +267,7 @@ int main(int argc, char **argv)
     // --------------------------------
     // 寻找目标物体  
     // --------------------------------   
-    std::vector<double> joint_group_seekbase = {79.57/57.3, -2.13/57.3, -53.65/57.3, 17.71/57.3, -93.67/57.3, -5.97/57.3};
+    std::vector<double> joint_group_seekbase = {86.8162/57.3, -7.29386/57.3, -71.5749/57.3, 25.4344/57.3, -90.533/57.3, -5.63/57.3};
     // visual_tools.prompt("Press 'next' : ready to seek object ! ");
     // 设定视觉搜索物体的起始位置
     printf("move to the start pose: joint_group_seekbase \n");
@@ -333,9 +279,7 @@ int main(int argc, char **argv)
     uint16_t seek_time = 0;
     uint16_t object_index = 0;
     std::vector<double> joint_group_seekstep = joint_group_seekbase;
-    
-
-
+     
     bool search_done = false;
     while(search_done == false)
     {
@@ -351,10 +295,10 @@ int main(int argc, char **argv)
         ros::Duration(0.3).sleep();
 
         // 若视线范围内无目标物体,则转动基座轴(关节0)继续寻找物体
-        while ((!object_flag)&&(seek_time < 6))
+        while ((!object_flag)&&(seek_time < 3))
         {
             seek_time ++;
-            joint_group_seekstep[0] += PI/20.0;
+            joint_group_seekstep[0] += 5/57.3;
 
             printf("seek for QRcode, seek_time = %d\n", seek_time);
             move_group.setJointValueTarget(joint_group_seekstep);
@@ -363,7 +307,7 @@ int main(int argc, char **argv)
             ros::Duration(0.3).sleep();
         }
 
-        if (seek_time >= 10)
+        if (seek_time >= 5)
         {
             search_done = true;
             printf("seek_time is 10, search_done \n");
@@ -396,62 +340,62 @@ int main(int argc, char **argv)
         transform_QRcode.mult(Trans_Camera_in_base_link, Trans_QRcode_in_Camera);
 
 
-        // 计算摄像头与物体距离,若距离较远,则近距离探测一次
-        double length_obeject_camera = sqrt(Pose_QRcode_in_Camera.position.x*Pose_QRcode_in_Camera.position.x
-                                        + Pose_QRcode_in_Camera.position.y*Pose_QRcode_in_Camera.position.y
-                                        + Pose_QRcode_in_Camera.position.z*Pose_QRcode_in_Camera.position.z);
-        printf("length_obeject_camera = %1.5f \n", length_obeject_camera);
-        if (0)//(length_obeject_camera > 0.3)
-        {
-            double h = (length_obeject_camera > 0.2) ? 0.2 : length_obeject_camera;
-            printf("move camera close to object \n");
-            tf::StampedTransform trans_camera_seek;
-            std::vector<double> joint_seek_near = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        // // 计算摄像头与物体距离,若距离较远,则近距离探测一次
+        // double length_obeject_camera = sqrt(Pose_QRcode_in_Camera.position.x*Pose_QRcode_in_Camera.position.x
+        //                                 + Pose_QRcode_in_Camera.position.y*Pose_QRcode_in_Camera.position.y
+        //                                 + Pose_QRcode_in_Camera.position.z*Pose_QRcode_in_Camera.position.z);
+        // printf("length_obeject_camera = %1.5f \n", length_obeject_camera);
+        // if (0)//(length_obeject_camera > 0.3)
+        // {
+        //     double h = (length_obeject_camera > 0.2) ? 0.2 : length_obeject_camera;
+        //     printf("move camera close to object \n");
+        //     tf::StampedTransform trans_camera_seek;
+        //     std::vector<double> joint_seek_near = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
-            // 计算摄像头的最佳位姿
-            double theta = atan2(transform_QRcode.getOrigin().y(), transform_QRcode.getOrigin().x());
-            double alpha = theta - PI*0.5;
-            q.setRPY(PI, 0.0, alpha);
-            trans_camera_seek.setOrigin(tf::Vector3(transform_QRcode.getOrigin().x(), 
-                                                    transform_QRcode.getOrigin().y(), 
-                                                    transform_QRcode.getOrigin().z() + h));
-            trans_camera_seek.setRotation(q);
+        //     // 计算摄像头的最佳位姿
+        //     double theta = atan2(transform_QRcode.getOrigin().y(), transform_QRcode.getOrigin().x());
+        //     double alpha = theta - PI*0.5;
+        //     q.setRPY(PI, 0.0, alpha);
+        //     trans_camera_seek.setOrigin(tf::Vector3(transform_QRcode.getOrigin().x(), 
+        //                                             transform_QRcode.getOrigin().y(), 
+        //                                             transform_QRcode.getOrigin().z() + h));
+        //     trans_camera_seek.setRotation(q);
 
-            // 根据QRcode位姿推测wrist3Link位姿  
-            trans_ee_link.mult(trans_camera_seek, Trans_wrist3Link_in_Camera);
+        //     // 根据QRcode位姿推测wrist3Link位姿  
+        //     trans_ee_link.mult(trans_camera_seek, Trans_wrist3Link_in_Camera);
 
-            joint_current = move_group.getCurrentJointValues();
-            bool reached = tarTrans_nearJ_bestJ(trans_ee_link, joint_current, &joint_seek_near);
+        //     joint_current = move_group.getCurrentJointValues();
+        //     bool reached = tarTrans_nearJ_bestJ(trans_ee_link, joint_current, &joint_seek_near);
 
-            if (reached == true)
-            {
-            printf("move to joint_seek_near, and photo again \n");
-            // 设置目标位置:
-            move_group.setJointValueTarget(joint_seek_near);
-            move_group.plan(my_plan);
-            move_group.execute(my_plan);
+        //     if (reached == true)
+        //     {
+        //     printf("move to joint_seek_near, and photo again \n");
+        //     // 设置目标位置:
+        //     move_group.setJointValueTarget(joint_seek_near);
+        //     move_group.plan(my_plan);
+        //     move_group.execute(my_plan);
 
-            // 近距离下,重新获取QRcode位姿
-            ros::Duration(0.3).sleep();
-            if (object_flag)
-            {   
-                pose_base_link_current = move_group.getCurrentPose("base_link").pose;
-                Trans_base_link_in_World.setOrigin(tf::Vector3(pose_base_link_current.position.x, pose_base_link_current.position.y, pose_base_link_current.position.z));
-                Trans_base_link_in_World.setRotation(tf::Quaternion(pose_base_link_current.orientation.x, pose_base_link_current.orientation.y, 
-                                                                pose_base_link_current.orientation.z, pose_base_link_current.orientation.w));
-                pose_current = move_group.getCurrentPose("kinect2_rgb_optical_frame").pose;
-                Trans_Camera_in_World.setOrigin(tf::Vector3(pose_current.position.x, pose_current.position.y, pose_current.position.z));
-                Trans_Camera_in_World.setRotation(tf::Quaternion(pose_current.orientation.x, pose_current.orientation.y, 
-                                                                pose_current.orientation.z, pose_current.orientation.w));
-                Trans_Camera_in_base_link.mult(Trans_base_link_in_World.inverse(), Trans_Camera_in_World);
-                transform_QRcode.mult(Trans_Camera_in_base_link, Trans_QRcode_in_Camera);
-            }
-            }
-            else
-            {
-            printf("cann't reach joint_seek_near \n");
-            }
-        }
+        //     // 近距离下,重新获取QRcode位姿
+        //     ros::Duration(0.3).sleep();
+        //     if (object_flag)
+        //     {   
+        //         pose_base_link_current = move_group.getCurrentPose("base_link").pose;
+        //         Trans_base_link_in_World.setOrigin(tf::Vector3(pose_base_link_current.position.x, pose_base_link_current.position.y, pose_base_link_current.position.z));
+        //         Trans_base_link_in_World.setRotation(tf::Quaternion(pose_base_link_current.orientation.x, pose_base_link_current.orientation.y, 
+        //                                                         pose_base_link_current.orientation.z, pose_base_link_current.orientation.w));
+        //         pose_current = move_group.getCurrentPose("kinect2_rgb_optical_frame").pose;
+        //         Trans_Camera_in_World.setOrigin(tf::Vector3(pose_current.position.x, pose_current.position.y, pose_current.position.z));
+        //         Trans_Camera_in_World.setRotation(tf::Quaternion(pose_current.orientation.x, pose_current.orientation.y, 
+        //                                                         pose_current.orientation.z, pose_current.orientation.w));
+        //         Trans_Camera_in_base_link.mult(Trans_base_link_in_World.inverse(), Trans_Camera_in_World);
+        //         transform_QRcode.mult(Trans_Camera_in_base_link, Trans_QRcode_in_Camera);
+        //     }
+        //     }
+        //     else
+        //     {
+        //     printf("cann't reach joint_seek_near \n");
+        //     }
+        // }
 
         // --------------------------------
         // 抓 取 物 体
@@ -503,33 +447,34 @@ int main(int argc, char **argv)
         printf("rzz_mul = %1.4f \n", rzz_mul);
         printf("the QRcode orientation is: ");
         q.setRPY(0, 0, 0);
+        
         if (rzz_mul > 0.707)
         {
-        // 朝上  // 如果Tag正面朝上,则tar_pose为tag_pose绕x轴旋转PI  
-        printf("up \n");  q.setRPY(PI, 0, 0);
+            // 朝上  // 如果Tag正面朝上,则tar_pose为tag_pose绕x轴旋转PI  
+            printf("up \n");  q.setRPY(PI, 0, 0);
         }
         else if (rzz_mul < -0.707)
         {
-        // 朝下,因为遮挡,该情况不会出现
-        printf("down \n"); q.setRPY(0, 0, 0);
+            // 朝下,因为遮挡,该情况不会出现
+            printf("down \n"); q.setRPY(0, 0, 0);
         }
         else
         {
-        // z侧面;
-        printf("side \n");
-        // x水平
-        if (std::fabs(rxz_mul) < 0.707)
-        {
-            // y向上
-            if (ryz_mul > 0.707) { q.setRPY(PI*0.5, 0, 0);  }
-            else { q.setRPY(-PI*0.5, 0, 0); }
-        }
-        else // y水平
-        {
-            // x向上
-            if (rxz_mul > 0.707) { q.setRPY(0, -PI*0.5, 0); }
-            else { q.setRPY(0, PI*0.5, 0); }
-        }
+            // z侧面;
+            printf("side \n");
+            // x水平
+            if (std::fabs(rxz_mul) < 0.707)
+            {
+                // y向上
+                if (ryz_mul > 0.707) { q.setRPY(PI*0.5, 0, 0);  }
+                else { q.setRPY(-PI*0.5, 0, 0); }
+            }
+            else // y水平
+            {
+                // x向上
+                if (rxz_mul > 0.707) { q.setRPY(0, -PI*0.5, 0); }
+                else { q.setRPY(0, PI*0.5, 0); }
+            }
         }
 
         transfrom_T.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
@@ -561,19 +506,19 @@ int main(int argc, char **argv)
         q.setRPY(0, 0, 0);
         if (rxob_mul > 0.707)
         {
-        // 朝向合适
-        q.setRPY(0, 0, 0);
+            // 朝向合适
+            q.setRPY(0, 0, 0);
         }
         else if (rxob_mul > -0.707)
         {
-        // 需要旋转90度或者-90度
-        if (ryob_mul > 0) { q.setRPY(0, 0, PI/2.0); }
-        else { q.setRPY(0, 0, -PI/2.0); }
+            // 需要旋转90度或者-90度
+            if (ryob_mul > 0) { q.setRPY(0, 0, PI/2.0); }
+            else { q.setRPY(0, 0, -PI/2.0); }
         }
         else
         {
-        // 需要旋转180度
-        q.setRPY(0, 0, PI);
+            // 需要旋转180度
+            q.setRPY(0, 0, PI);
         }
 
         transfrom_T.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
@@ -674,11 +619,11 @@ int main(int argc, char **argv)
         // --------------------------------
         printf("-----------------------------------\n");
         printf("------stage : place the object ------\n");
-        // // 抓取物体后的运动:准备抓取位置 -> 搜索位置
-        // printf("move to joint_group_seekstep \n");
-        // move_group.setJointValueTarget(joint_group_seekstep);
-        // move_group.plan(my_plan);
-        // move_group.execute(my_plan);
+        // 抓取物体后的运动:准备抓取位置 -> 搜索位置
+        printf("move to joint_group_seekstep \n");
+        move_group.setJointValueTarget(joint_group_seekstep);
+        move_group.plan(my_plan);
+        move_group.execute(my_plan);
 
         // ---------------------
         // 放置物体:
@@ -767,7 +712,7 @@ int main(int argc, char **argv)
  * 
  * @param tag 
  */ 
-void handle_tag_in_camera(const apriltag_ros::AprilTagDetectionArray::ConstPtr& tag)
+void handle_tag_in_camera(const apriltag_arm_ros::AprilTagDetectionArray::ConstPtr& tag)
 {
     static tf::TransformBroadcaster brQRcode;
     static uint16_t loseCnt = 0;
@@ -802,8 +747,8 @@ void handle_tag_in_camera(const apriltag_ros::AprilTagDetectionArray::ConstPtr& 
                                                         Pose_QRcode_in_Camera.orientation.z,
                                                         Pose_QRcode_in_Camera.orientation.w));
 
-        object_u = tag->detections[index_min].center_point[0] - 640.0/2.0;
-        object_v = tag->detections[index_min].center_point[1] - 480.0/2.0;
+        object_u = tag->detections[index_min].center_point[0] - 960.0/2.0; // 采用960×540大小的图像
+        object_v = tag->detections[index_min].center_point[1] - 540.0/2.0;
         object_update = true;
 
         object_flag = true;
@@ -819,17 +764,17 @@ void handle_tag_in_camera(const apriltag_ros::AprilTagDetectionArray::ConstPtr& 
         loseCnt ++;
         if (loseCnt > 10)
         { 
-        loseCnt = 0;
-        Pose_QRcode_in_Camera.position.x = 0.0;
-        Pose_QRcode_in_Camera.position.y = 0.0;
-        Pose_QRcode_in_Camera.position.z = 0.0;
-        Pose_QRcode_in_Camera.orientation.x = 0.0;
-        Pose_QRcode_in_Camera.orientation.y = 0.0;
-        Pose_QRcode_in_Camera.orientation.z = 0.0;
-        Pose_QRcode_in_Camera.orientation.w = 1.0;
-        Trans_QRcode_in_Camera.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
-        Trans_QRcode_in_Camera.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
-        object_flag = false;
+            loseCnt = 0;
+            Pose_QRcode_in_Camera.position.x = 0.0;
+            Pose_QRcode_in_Camera.position.y = 0.0;
+            Pose_QRcode_in_Camera.position.z = 0.0;
+            Pose_QRcode_in_Camera.orientation.x = 0.0;
+            Pose_QRcode_in_Camera.orientation.y = 0.0;
+            Pose_QRcode_in_Camera.orientation.z = 0.0;
+            Pose_QRcode_in_Camera.orientation.w = 1.0;
+            Trans_QRcode_in_Camera.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+            Trans_QRcode_in_Camera.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
+            object_flag = false;
         }
 
     }
@@ -1226,4 +1171,5 @@ bool tarTrans_nearJ_bestJ(tf::StampedTransform tarTrans, std::vector<double> nea
   tarPose.orientation.w = tarTrans.getRotation().w();
   return tarPose_nearJ_bestJ(tarPose, nearJ, bestJ);
 }
-
+ 
+ 

@@ -5,6 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -std=c++0x")
 find_package(catkin REQUIRED COMPONENTS
   apriltag_ros
   geometry_msgs
+  message_generation
   roscpp
   rospy
   sensor_msgs
@@ -33,6 +34,17 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Boost REQUIRED system filesystem date_time thread)
 
+add_service_files(
+  FILES
+  armshakehand.srv
+  armshakehead.srv
+  graspobj.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 catkin_package( 
  INCLUDE_DIRS 
@@ -40,7 +52,7 @@ catkin_package(
  LIBRARIES 
  aubo_arm_usr
 #  CATKIN_DEPENDS 
- apriltag_ros geometry_msgs roscpp rospy sensor_msgs std_msgs tf moveit_core moveit_ros_planning_interface
+ apriltag_ros geometry_msgs roscpp rospy sensor_msgs std_msgs tf moveit_core moveit_ros_planning_interface message_runtime
 #  DEPENDS system_lib
 )
  
@@ -68,10 +80,15 @@ target_link_libraries(grasp_april_cube_demo ${catkin_LIBRARIES})
 add_executable(aubo_3D_struct src/aubo_3D_struct.cpp)
 target_link_libraries(aubo_3D_struct ${catkin_LIBRARIES})
 
+# add_executable(aubo_shake_head src/aubo_shake_head.cpp)
+# target_link_libraries(aubo_shake_head ${catkin_LIBRARIES})
 
-install(PROGRAMS 
+add_executable(aubo_shake_hand src/aubo_shake_hand.cpp)
+target_link_libraries(aubo_shake_hand ${catkin_LIBRARIES})
+  
+catkin_install_python(PROGRAMS
    scripts/moveit_fk_demo.py
    scripts/moveit_ik_demo.py
-   scripts/moveit_cartesian_demo.py 
+   scripts/moveit_cartesian_demo.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+) 
