@@ -40,6 +40,7 @@ add_service_files(
   armshakehead.srv
   graspobj.srv
   graspcube.srv
+  graspcup.srv
 )
 
 generate_messages(
@@ -76,6 +77,9 @@ target_link_libraries(aubo_3D_struct ${catkin_LIBRARIES})
  
 add_executable(aubo_motion src/aubo_motion.cpp)
 target_link_libraries(aubo_motion ${catkin_LIBRARIES})
+
+add_executable(grasp_cup src/grasp_cup.cpp)
+target_link_libraries(grasp_cup ${catkin_LIBRARIES})
   
 catkin_install_python(PROGRAMS
    scripts/moveit_fk_demo.py

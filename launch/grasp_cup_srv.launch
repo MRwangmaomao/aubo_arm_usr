@@ -1,0 +1,10 @@
+<launch>
+
+  <include file="$(find find_cup_ros)/launch/find_and_measure_cup_kinect2.launch" >
+    
+  </include>
+ 
+
+  <node pkg="aubo_arm_usr" type="grasp_cup" name="grasp_cup"  output="screen" />
+  
+</launch>
