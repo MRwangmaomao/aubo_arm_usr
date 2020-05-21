@@ -1,0 +1,8 @@
+<launch>
+
+  <include file="$(find apriltag_arm_ros)/launch/kinectv2_detection.launch" />
+ 
+
+  <node pkg="aubo_arm_usr" type="grasp_april_cube_once" name="grasp_april_cube_once"  output="screen" />
+  
+</launch>

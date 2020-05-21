@@ -39,6 +39,7 @@ add_service_files(
   armshakehand.srv
   armshakehead.srv
   graspobj.srv
+  graspcube.srv
 )
 
 generate_messages(
@@ -61,30 +62,20 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
 )
+ 
+add_executable(grasp_april_cube_steadily_demo src/grasp_april_cube_steadily.cpp)
+target_link_libraries(grasp_april_cube_steadily_demo ${catkin_LIBRARIES})
 
-# add_executable(moveit_random_demo src/moveit_study/moveit_random_demo.cpp)
-# target_link_libraries(moveit_random_demo ${catkin_LIBRARIES})
+ 
+add_executable(grasp_april_cube_once src/grasp_april_cube_once.cpp)
+target_link_libraries(grasp_april_cube_once ${catkin_LIBRARIES})
 
-add_executable(moveit_fk_demo src/moveit_study/moveit_fk_demo.cpp)
-target_link_libraries(moveit_fk_demo ${catkin_LIBRARIES})
-
-add_executable(moveit_ik_demo src/moveit_study/moveit_ik_demo.cpp)
-target_link_libraries(moveit_ik_demo ${catkin_LIBRARIES})
-
-add_executable(moveit_cartesian_demo src/moveit_study/moveit_cartesian_demo.cpp)
-target_link_libraries(moveit_cartesian_demo ${catkin_LIBRARIES})
-
-add_executable(grasp_april_cube_demo src/grasp_april_cube.cpp)
-target_link_libraries(grasp_april_cube_demo ${catkin_LIBRARIES})
 
 add_executable(aubo_3D_struct src/aubo_3D_struct.cpp)
 target_link_libraries(aubo_3D_struct ${catkin_LIBRARIES})
-
-# add_executable(aubo_shake_head src/aubo_shake_head.cpp)
-# target_link_libraries(aubo_shake_head ${catkin_LIBRARIES})
-
-add_executable(aubo_shake_hand src/aubo_shake_hand.cpp)
-target_link_libraries(aubo_shake_hand ${catkin_LIBRARIES})
+ 
+add_executable(aubo_motion src/aubo_motion.cpp)
+target_link_libraries(aubo_motion ${catkin_LIBRARIES})
   
 catkin_install_python(PROGRAMS
    scripts/moveit_fk_demo.py

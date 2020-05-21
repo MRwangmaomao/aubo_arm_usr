@@ -38,6 +38,10 @@ using namespace Eigen;
 // ========================================================
 // 全局变量定义
 // ========================================================
+// 只抓取一次
+bool grasp_once_flag = false;
+
+
 // 关节角度限制
 const double Jlimit_min[6] = {-PI, -PI, -PI, -PI, -PI, -PI};
 const double Jlimit_max[6] = {PI, PI, PI, PI, PI, PI};
@@ -91,7 +95,8 @@ bool tarTrans_nearJ_bestJ(tf::StampedTransform tarTrans, std::vector<double> nea
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "grasp_april_cube");
+    ros::init(argc, argv, "grasp_april_cube_steadily_demo");
+    printf("开始抓取物体:\n");
     ros::NodeHandle node_handle;
     ros::AsyncSpinner spinner(1);
     spinner.start();
@@ -103,7 +108,7 @@ int main(int argc, char **argv)
 
     // 创建一个线程,用来定时显示目标坐标系;
     std::thread threadObj(thread_function);
-    
+
     // ---------------------------------
     // 话题订阅与发布
     // ---------------------------------
@@ -205,7 +210,7 @@ int main(int argc, char **argv)
     ROS_INFO_NAMED("tutorial", "End effector link: %s", move_group.getEndEffectorLink().c_str());
 
 
-    move_group.setMaxVelocityScalingFactor(0.70);
+    move_group.setMaxVelocityScalingFactor(2.50);
     move_group.setMaxAccelerationScalingFactor(0.4);
 
     // -------------------------------------------
@@ -270,7 +275,7 @@ int main(int argc, char **argv)
     std::vector<double> joint_group_seekbase = {86.8162/57.3, -7.29386/57.3, -71.5749/57.3, 25.4344/57.3, -90.533/57.3, -5.63/57.3};
     // visual_tools.prompt("Press 'next' : ready to seek object ! ");
     // 设定视觉搜索物体的起始位置
-    printf("move to the start pose: joint_group_seekbase \n");
+    printf("运动到起始位置: joint_group_seekbase \n");
     move_group.setJointValueTarget(joint_group_seekbase);
     move_group.plan(my_plan);
     move_group.execute(my_plan);
@@ -285,7 +290,7 @@ int main(int argc, char **argv)
     {
         // search_done = true;
         printf("-----------------------------------\n");
-        printf("---stage: seek for objects --------\n");
+        printf("---stage: 寻找物体 --------\n");
 
         // 移动至本轮的初始位置,
         move_group.setJointValueTarget(joint_group_seekstep);
@@ -298,7 +303,7 @@ int main(int argc, char **argv)
         while ((!object_flag)&&(seek_time < 3))
         {
             seek_time ++;
-            joint_group_seekstep[0] += 5/57.3;
+            joint_group_seekstep[0] += 20/57.3;
 
             printf("seek for QRcode, seek_time = %d\n", seek_time);
             move_group.setJointValueTarget(joint_group_seekstep);
@@ -307,25 +312,31 @@ int main(int argc, char **argv)
             ros::Duration(0.3).sleep();
         }
 
-        if (seek_time >= 5)
+        if (seek_time >= 3)
         {
-            search_done = true;
+            // search_done = true;
+            seek_time = 0;
+            joint_group_seekstep[0] -= 60/57.3;
+            move_group.setJointValueTarget(joint_group_seekstep);
+            move_group.plan(my_plan);
+            move_group.execute(my_plan);
+            ros::Duration(0.3).sleep();
             printf("seek_time is 10, search_done \n");
         }
 
         if (!object_flag)
         {
-            printf("thers is none QRcode \n");
+            printf("没有找到 QRcode \n");
             break;
         }
 
-        printf("---result: have found QRcode ----- \n");
+        printf("---result: 找到了 QRcode----- \n");
 
         // --------------------------------
         // 摄像头近距离精准探测一次:
         // --------------------------------
         printf("-----------------------------------------\n");
-        printf("---stage: move camera close to object ---\n");
+        printf("---stage: 移动相机接近物体 ---\n");
         // ---------------------------------------------------------------------------
         // 读取目标物体的位姿
         pose_base_link_current = move_group.getCurrentPose("base_link").pose;
@@ -407,11 +418,11 @@ int main(int argc, char **argv)
         std::vector<double> joint_Pick = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
         printf("-----------------------------------\n");
-        printf("--- stage : pick the object -------\n");
+        printf("--- stage : 抓取物体 -------\n");
         // visual_tools.prompt("next step");
 
         // 主区前先打开手抓
-        printf("open the gripper fingers \n");
+        printf("打开电爪 \n");
         dhhand_msg.data = 95;
         dhhand_pub.publish(dhhand_msg);
 
@@ -578,29 +589,29 @@ int main(int argc, char **argv)
             if (pick_reached == true)
             {
                 // 设置目标位置:
-                printf("move to pose_RdyToPick \n");
+                printf("移动到工作位置上方 \n");
                 move_group.setJointValueTarget(joint_RdyToPick);
                 move_group.plan(my_plan);
                 move_group.execute(my_plan);
                 // visual_tools.prompt("next step");
-                printf("move to pose_Pick \n");
+                printf("移动到抓取位置 \n");
                 move_group.setJointValueTarget(joint_Pick);
                 move_group.plan(my_plan);
                 move_group.execute(my_plan);
                 // visual_tools.prompt("next step");
-                printf("close the gripper \n");
+                printf("闭合电爪 \n");
                 dhhand_msg.data = 1;
                 dhhand_pub.publish(dhhand_msg);
                 ros::Duration(2.0).sleep();
 
-                printf("move to pose_RdyToPick \n");
+                printf("移动到工作位置上方 \n");
                 move_group.setJointValueTarget(joint_RdyToPick);
                 move_group.plan(my_plan);
                 move_group.execute(my_plan);
                 
                 object_index ++;
 
-                printf("this is Number:  %d object\n", object_index);
+                printf("抓取第:  %d 个物体\n", object_index);
 
                 pick_try = false;
             }
@@ -610,7 +621,7 @@ int main(int argc, char **argv)
         
         if (pick_reached == false)
         {
-            printf("cann't pick this object \n");
+            printf("无法抓取到该物体 \n");
             break;
         }
 
@@ -618,9 +629,9 @@ int main(int argc, char **argv)
         // 放 置 物 体
         // --------------------------------
         printf("-----------------------------------\n");
-        printf("------stage : place the object ------\n");
+        printf("------stage : 放置物体 ------\n");
         // 抓取物体后的运动:准备抓取位置 -> 搜索位置
-        printf("move to joint_group_seekstep \n");
+        printf("移动回到拍照位置 \n");
         move_group.setJointValueTarget(joint_group_seekstep);
         move_group.plan(my_plan);
         move_group.execute(my_plan);
@@ -677,7 +688,7 @@ int main(int argc, char **argv)
 
         if (reach_place)
         {
-            printf("finish place the object, back to saft pose \n");
+            printf("结束本次抓取，返回安全位置 \n");
             move_group.setJointValueTarget(joint_place_up);
             move_group.plan(my_plan);
             move_group.execute(my_plan);
@@ -686,12 +697,18 @@ int main(int argc, char **argv)
             move_group.plan(my_plan);
             move_group.execute(my_plan);
         }
-    }
 
+         if(grasp_once_flag){
+            search_done = true;
+            printf("---只抓取一次，退出循环--------\n");
+            break;
+        }
+    }
+    printf("---系统结束--------\n");
     // 运动完毕后,清除约束   
    move_group.clearPathConstraints();
 
-   visual_tools.prompt("Press 'next',  all things done!!! \n");
+//    visual_tools.prompt("Press 'next',  all things done!!! \n");
 
 
     // // 结束线程
@@ -739,8 +756,8 @@ void handle_tag_in_camera(const apriltag_arm_ros::AprilTagDetectionArray::ConstP
 
         // 查询距离最近tag的位姿
         Pose_QRcode_in_Camera = tag->detections[index_min].pose.pose.pose;
-        Trans_QRcode_in_Camera.setOrigin(tf::Vector3(Pose_QRcode_in_Camera.position.x,
-                                                    Pose_QRcode_in_Camera.position.y,
+        Trans_QRcode_in_Camera.setOrigin(tf::Vector3(Pose_QRcode_in_Camera.position.x-0.013,  //x轴修正-0.15
+                                                    Pose_QRcode_in_Camera.position.y-0.005,         //y轴修正0.1
                                                     Pose_QRcode_in_Camera.position.z));
         Trans_QRcode_in_Camera.setRotation(tf::Quaternion(Pose_QRcode_in_Camera.orientation.x, 
                                                         Pose_QRcode_in_Camera.orientation.y,
