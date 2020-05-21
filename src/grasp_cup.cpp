@@ -33,6 +33,8 @@
 
 #include "find_cup_ros/CupDetectionArray.h"
 
+#include "aubo_arm_usr/graspcup.h" 
+
 using namespace Eigen; 
 
 #define PI 3.1415926
@@ -63,6 +65,11 @@ float object_u;
 float object_v;
 
 
+// 订阅的消息和服务
+ros::Publisher cup_start_detections_publisher_;
+ros::Publisher dhhand_pub;
+ros::Subscriber sub_cup_detections;
+ros::ServiceServer service_grasp_cup;
 
 // 坐标齐次变换变量
 tf::StampedTransform Transform_target;
@@ -94,32 +101,18 @@ bool tarPose_nearJ_bestJ(geometry_msgs::Pose tarPose, std::vector<double> nearJ,
 bool tarTrans_nearJ_bestJ(tf::StampedTransform tarTrans, std::vector<double> nearJ, std::vector<double> *bestJ);
 
 
-int main(int argc, char **argv)
+bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
+        aubo_arm_usr::graspcup::Response &res)
 {
-    ros::init(argc, argv, "grasp_cup");
-    ros::NodeHandle node_handle;
-    ros::AsyncSpinner spinner(1);
-    spinner.start();
+    int8_t grasp_time = req.grasp_cup_num;
+    
+    tf::TransformListener listener; 
+    std_msgs::Int8 dhhand_msg;
 
     // 初始化变量
     Transform_target.setOrigin(tf::Vector3(0, 0, 0));
     Transform_target.setRotation(tf::Quaternion(0, 0, 0, 1));
 
-
-    // 创建一个线程,用来定时显示目标坐标系;
-    // std::thread threadObj(thread_function);
-    
-    // ---------------------------------
-    // 话题订阅与发布
-    // ---------------------------------
-    ros::Subscriber sub_cup_detections = node_handle.subscribe("/cup_detections", 100, handle_cup_in_camera);
-    std_msgs::Int8 dhhand_msg;
-    ros::Publisher dhhand_pub = node_handle.advertise<std_msgs::Int8>("/dh_hand", 1);
-    
-    // 发送开始图像处理消息
-    ros::Publisher cup_start_detections_publisher_ = node_handle.advertise<geometry_msgs::Pose>("/camera2world", 1); // 发布开始检测杯子命令 
-
-    tf::TransformListener listener; 
 
     // ---------------------------------------
     // 固连坐标系变换关系求解
@@ -211,8 +204,7 @@ int main(int argc, char **argv)
 
     ROS_INFO_NAMED("tutorial", "Reference frame: %s", move_group.getPlanningFrame().c_str());
     ROS_INFO_NAMED("tutorial", "End effector link: %s", move_group.getEndEffectorLink().c_str());
-
-
+ 
     move_group.setMaxVelocityScalingFactor(0.15);
     move_group.setMaxAccelerationScalingFactor(0.1);
 
@@ -228,7 +220,7 @@ int main(int argc, char **argv)
     const double place_dx = 0;
     const double place_dy = 0;
     const double place_up = 0;
-    const double place_down = 0.0286;
+    const double place_down = 0.0282;
     //第n次放置位置变量
     geometry_msgs::Pose place_pose0;    
     place_pose0.position.x = 0.084;
@@ -269,9 +261,7 @@ int main(int argc, char **argv)
     // ---------------------------------------    
     dhhand_msg.data = 90;
     dhhand_pub.publish(dhhand_msg);
-
-
-    
+ 
     // --------------------------------
     // 寻找目标物体  
     // --------------------------------   
@@ -661,14 +651,35 @@ int main(int argc, char **argv)
     }
 
     // 运动完毕后,清除约束   
-   move_group.clearPathConstraints();
-   printf("结束grasp cup\n"); 
-//    visual_tools.prompt("Press 'next',  all things done!!! \n");
+    move_group.clearPathConstraints();
+    printf("结束grasp cup\n"); 
+    res.is_ok = true;
+    return true;
+} 
+
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "grasp_cup");
+    ros::NodeHandle node_handle;
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
 
 
-    // // 结束线程
-    // threadObj.join();
+    // 创建一个线程,用来定时显示目标坐标系;
+    // std::thread threadObj(thread_function);
+    
+    // ---------------------------------
+    // 话题和服务订阅与发布
+    // ---------------------------------
+    sub_cup_detections = node_handle.subscribe("/cup_detections", 100, handle_cup_in_camera);
 
+    dhhand_pub = node_handle.advertise<std_msgs::Int8>("/dh_hand", 1);
+    
+    service_grasp_cup = node_handle.advertiseService("/grasp_cup", grasp_cup_res);
+    // 发送开始图像处理消息
+    cup_start_detections_publisher_ = node_handle.advertise<geometry_msgs::Pose>("/camera2world", 1); // 发布开始检测杯子命令 
+ 
+    ros::spin();
     ros::shutdown();
     // threadObj.
     return 0;

@@ -664,7 +664,7 @@ int main(int argc, char **argv)
 
     ros::AsyncSpinner spinner(1);
     spinner.start();
-        service_grasp_cube = node_handle.advertiseService("/graspcube", grasp_cube_res); 
+    service_grasp_cube = node_handle.advertiseService("/graspcube", grasp_cube_res); 
     sub_tag_detections = node_handle.subscribe("/tag_detections", 100, handle_tag_in_camera);
     dhhand_pub = node_handle.advertise<std_msgs::Int8>("/dh_hand", 1);
     // std::thread threadObj(thread_function);
