@@ -31,16 +31,20 @@ find_package(catkin REQUIRED COMPONENTS
   ur_kinematics
   find_cup_ros
 )
-
+find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED system filesystem date_time thread)
+find_package(PkgConfig)
+find_package(OpenCV REQUIRED) 
 
 add_service_files(
   FILES
+  armmovemotion.srv
   armshakehand.srv
   armshakehead.srv
   graspobj.srv
   graspcube.srv
   graspcup.srv
+  
 )
 
 generate_messages(
@@ -55,15 +59,18 @@ catkin_package(
  aubo_arm_usr
 #  CATKIN_DEPENDS 
  apriltag_ros geometry_msgs roscpp rospy sensor_msgs std_msgs tf moveit_core moveit_ros_planning_interface message_runtime
-#  DEPENDS system_lib
+ DEPENDS OpenCV
 )
  
 include_directories(
   include ${catkin_INCLUDE_DIRS}
-  include
-  ${catkin_INCLUDE_DIRS}
+  include 
+  ${catkin_INCLUDE_DIRS} 
+  ${EIGEN3_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}  
 )
- 
+
+
 add_executable(grasp_april_cube_steadily_demo src/grasp_april_cube_steadily.cpp)
 target_link_libraries(grasp_april_cube_steadily_demo ${catkin_LIBRARIES})
 
@@ -86,4 +93,9 @@ catkin_install_python(PROGRAMS
    scripts/moveit_ik_demo.py
    scripts/moveit_cartesian_demo.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+) 
+
+
+install(DIRECTORY launch config
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 ) 

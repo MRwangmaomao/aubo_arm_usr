@@ -12,6 +12,8 @@
 #include <map> 
 #include <thread>
 
+#include <std_msgs/String.h>
+
 #include <tf/transform_broadcaster.h>
 
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -70,7 +72,7 @@ ros::Publisher cup_start_detections_publisher_;
 ros::Publisher dhhand_pub;
 ros::Subscriber sub_cup_detections;
 ros::ServiceServer service_grasp_cup;
-
+ros::Publisher pub_voice;
 // 坐标齐次变换变量
 tf::StampedTransform Transform_target;
 tf::StampedTransform Trans_Gripper_in_wrist3Link;
@@ -205,8 +207,8 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
     ROS_INFO_NAMED("tutorial", "Reference frame: %s", move_group.getPlanningFrame().c_str());
     ROS_INFO_NAMED("tutorial", "End effector link: %s", move_group.getEndEffectorLink().c_str());
  
-    move_group.setMaxVelocityScalingFactor(0.15);
-    move_group.setMaxAccelerationScalingFactor(0.1);
+    move_group.setMaxVelocityScalingFactor(0.65);
+    move_group.setMaxAccelerationScalingFactor(0.3);
 
     // -------------------------------------------
     // 变量定义
@@ -351,6 +353,10 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
         // --------------------------------
         // 抓 取 物 体
         // --------------------------------
+        std_msgs::String voice_word;
+        voice_word.data = "小弟给书记，团长，军座，汪院等端茶";
+        pub_voice.publish(voice_word); 
+
         // 抓取位姿相关变量
         geometry_msgs::Pose pose_RdyToPick;
         geometry_msgs::Pose pose_Pick;
@@ -360,7 +366,7 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
         printf("-----------------------------------\n");
         printf("--- stage : pick the object -------\n");
         // visual_tools.prompt("next step");
-
+        
         // 主区前先打开手抓
         printf("open the gripper fingers \n");
         dhhand_msg.data = 95;
@@ -591,7 +597,9 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
         // 首先到达放置安全过渡位
         move_group.setJointValueTarget(joint_place_saft);     
         move_group.plan(my_plan);
-        move_group.execute(my_plan);
+        move_group.execute(my_plan); 
+        voice_word.data = "书记，团长，军座，汪院，  请您慢用！";
+        pub_voice.publish(voice_word); 
 
         // 第N个问题的放置位姿
         geometry_msgs::Pose place_poseN;
@@ -663,10 +671,7 @@ int main(int argc, char **argv)
     ros::NodeHandle node_handle;
     ros::AsyncSpinner spinner(1);
     spinner.start();
-
-
-    // 创建一个线程,用来定时显示目标坐标系;
-    // std::thread threadObj(thread_function);
+ 
     
     // ---------------------------------
     // 话题和服务订阅与发布
@@ -678,10 +683,12 @@ int main(int argc, char **argv)
     service_grasp_cup = node_handle.advertiseService("/grasp_cup", grasp_cup_res);
     // 发送开始图像处理消息
     cup_start_detections_publisher_ = node_handle.advertise<geometry_msgs::Pose>("/camera2world", 1); // 发布开始检测杯子命令 
- 
+    
+    // 发送语音提示消息
+    pub_voice = node_handle.advertise<std_msgs::String> ("/voiceWords", 1);
+
     ros::spin();
-    ros::shutdown();
-    // threadObj.
+    ros::shutdown(); 
     return 0;
 }
 

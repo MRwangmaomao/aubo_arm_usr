@@ -44,6 +44,7 @@
 #include "apriltag_ros/AprilTagDetectionArray.h" 
 #include "aubo_arm_usr/armshakehead.h"
 #include "aubo_arm_usr/armshakehand.h"
+#include "aubo_arm_usr/armmovemotion.h"
 
 using namespace Eigen; 
 
@@ -60,6 +61,9 @@ tf::StampedTransform Trans_base_link_in_World;
 tf::StampedTransform Trans_Camera_in_base_link;
 double T_Tag[16] = {0};   // 相机光心相对于机械臂基座的变换
 
+// 小车运行时保证机械臂移动到寻路避障状态
+std::vector<double> joint_move_motino = {86.806916/57.3, -32.096968/57.3, -54.607499/57.3, 40.357928/57.3, -90.535073/57.3, -4.269872/57.3};
+
 // 机械臂需要到达的安全握手位置
 std::vector<double> joint_place_saft = {93.040639/57.3, -19.4846/57.3, -124.3173/57.3, -100.7384/57.3, -79.8388/57.3, 82.8067/57.3};
 
@@ -68,12 +72,15 @@ std::vector<double> shake_hand_end = {93.040639/57.3, -19.4846/57.3, -136.4572/5
 
 std::vector<double> shake_head_start = {85.3201/57.3, 34.793/57.3, 68.918/57.3, -52.9561/57.3, -107/57.3, 4.243/57.3};
 std::vector<double> shake_head_end = {85.3201/57.3, 34.793/57.3, 68.918/57.3, -52.9561/57.3, -79.725/57.3, 4.243/57.3};
-  
+
+
+
+
+
 bool shakeHeadRes(aubo_arm_usr::armshakehead::Request  &req,
         aubo_arm_usr::armshakehead::Response &res)
 {
-   
-      
+     
     ROS_INFO("shake_num = [%d]", req.shake_num); 
   
     static const std::string PLANNING_GROUP = "manipulator_i5";
@@ -221,6 +228,27 @@ bool shakeHandRes(aubo_arm_usr::armshakehand::Request  &req,
 } 
 
 
+
+
+bool armMoveMotionRes(aubo_arm_usr::armmovemotion::Request &req,
+    aubo_arm_usr::armmovemotion::Response &res)
+{   
+    static const std::string PLANNING_GROUP = "manipulator_i5";
+    moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
+ 
+    moveit::planning_interface::MoveGroupInterface::Plan my_plan; 
+    
+    move_group.setMaxVelocityScalingFactor(0.35);
+    move_group.setMaxAccelerationScalingFactor(0.1);
+ 
+    move_group.setJointValueTarget(joint_move_motino);     
+    move_group.plan(my_plan);
+    move_group.execute(my_plan); 
+    move_group.clearPathConstraints();
+    res.is_ok = 1;
+    return true;
+} 
+
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "aubo_cup");
@@ -230,8 +258,9 @@ int main(int argc, char *argv[])
 
     ros::ServiceServer service_shake_hand = node_handle.advertiseService("shake_hand", shakeHandRes);//shake_hand
     ros::ServiceServer service_shake_head = node_handle.advertiseService("shake_head", shakeHeadRes);//shake_head
+    ros::ServiceServer service_arm_move_motion = node_handle.advertiseService("arm_move_motion", armMoveMotionRes);//shake_head
 
-        ros::AsyncSpinner spinner(1);
+    ros::AsyncSpinner spinner(1);
     spinner.start();
       
 
