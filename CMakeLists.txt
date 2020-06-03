@@ -87,7 +87,11 @@ target_link_libraries(aubo_motion ${catkin_LIBRARIES})
 
 add_executable(grasp_cup src/grasp_cup.cpp)
 target_link_libraries(grasp_cup ${catkin_LIBRARIES})
-  
+
+add_executable(gpd_ros_grasp src/gpd_grasp.cpp)
+target_link_libraries(gpd_ros_grasp ${catkin_LIBRARIES})
+ 
+
 catkin_install_python(PROGRAMS
    scripts/moveit_fk_demo.py
    scripts/moveit_ik_demo.py

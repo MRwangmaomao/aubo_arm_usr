@@ -29,6 +29,8 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
 
+#include <opencv2/imgproc.hpp>
+
 #include "std_msgs/Int8.h"
 #include "apriltag_arm_ros/AprilTagDetection.h"
 #include "apriltag_arm_ros/AprilTagDetectionArray.h" 
@@ -354,7 +356,7 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
         // 抓 取 物 体
         // --------------------------------
         std_msgs::String voice_word;
-        voice_word.data = "小弟给书记，团长，军座，汪院等端茶";
+        voice_word.data = "给您端茶";
         pub_voice.publish(voice_word); 
 
         // 抓取位姿相关变量
@@ -440,7 +442,7 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
         
         transform_tar = transform_cup;
         transform_tar.operator*=(transfrom_T);
-
+        
         // 判断x轴与基座的方向,选择合适抓取位姿
         geometry_msgs::Pose pose_temp;
         pose_temp.position.x = transform_tar.getOrigin().x();
@@ -598,7 +600,7 @@ bool grasp_cup_res(aubo_arm_usr::graspcup::Request &req,
         move_group.setJointValueTarget(joint_place_saft);     
         move_group.plan(my_plan);
         move_group.execute(my_plan); 
-        voice_word.data = "书记，团长，军座，汪院，  请您慢用！";
+        voice_word.data = " 请您慢用！";
         pub_voice.publish(voice_word); 
 
         // 第N个问题的放置位姿

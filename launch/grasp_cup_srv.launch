@@ -5,6 +5,6 @@
   </include>
  
 
-  <node pkg="aubo_arm_usr" type="grasp_cup" name="grasp_cup"  output="screen" />
+  <node pkg="aubo_arm_usr" type="grasp_cup" name="grasp_cup"  />
   
 </launch>
