@@ -350,7 +350,7 @@ int main(int argc, char **argv)
         if(tags_find_flag)
         {
             sensor_msgs::PointCloud2 kinect_pointcloud; 
-            pcl::PointCloud<pcl::PointXYZ> all_cloud;
+            pcl::PointCloud<pcl::PointXYZRGB> all_cloud;
             gpd_ros::detect_grasps detect_grasp_req;
             kinect_pointcloud.header.frame_id = "/robot_base"; // 点云的frame
             kinect_pointcloud.header.stamp = ros::Time::now();
@@ -397,13 +397,14 @@ int main(int argc, char **argv)
                     y_pixel_start = tags_corners[1].center_point[1];
                 }
  
-                // step6.1.3 对ROI进行点云合成 提取区域内的点云
-                pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+                 // step6.1.4 对ROI进行点云合成 提取区域内的点云
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
                 for ( int m=y_pixel_start; m<y_pixel_end; m+=1 )// 每一行
                 {
                     for ( int n=x_pixel_start; n<x_pixel_end; n+=1 )//每一列
                     { 
-                        pcl::PointXYZ p; 
+                        pcl::PointXYZRGB p; 
+                        
                         float d = double(kinect_depth.ptr<unsigned short>(m)[n])/1000.0;// 深度 m为单位 保留0～2m内的点 
                          
                         if (d < 0.1 || d>6.0) // 相机测量范围 0.5～6m 
@@ -414,13 +415,17 @@ int main(int argc, char **argv)
                         p.z = d;
                         p.x = ( n - cx) * d / fx;
                         p.y = y; 
-                        cloud->points.push_back(p); 
+                        p.b = kinect_color.ptr<uchar>(m)[n*3+0];// 点颜色=====
+                        p.g = kinect_color.ptr<uchar>(m)[n*3+1];
+                        p.r = kinect_color.ptr<uchar>(m)[n*3+2]; 
+                        cloud->push_back(p);
                         // std::cout << p << std::endl;
                     }
                 }
                 std::cout << "cloud的点云数量为: " << cloud->size() << std::endl;
 
-                // step6.1.4 计算得到QR在相机中的tf, 获得相机和基座的tf关系 QR在机器人中的tf关系
+
+                // step6.1.3 计算得到QR在相机中的tf, 获得相机和基座的tf关系 QR在机器人中的tf关系
                 geometry_msgs::Pose Pose_QR_corner_in_Camera = tags_corners[0].pose.pose.pose;
                 Trans_QR_corner_in_Camera.setOrigin(tf::Vector3(Pose_QR_corner_in_Camera.position.x-0.013,  //x轴修正-0.15
                                                             Pose_QR_corner_in_Camera.position.y-0.005,         //y轴修正0.1
@@ -454,6 +459,7 @@ int main(int argc, char **argv)
                 desk_height = Trans_QR_corner_in_robot_base.getOrigin().getZ(); 
                 std::cout << "desk_height is " << desk_height << std::endl;
 
+ 
                 // step 6.1.5 将pcl点云从相机坐标系下转变到移动机器人坐标系下
                 Eigen::Matrix4d T_robot_camera(Eigen::Matrix4d::Identity());   
                 T_robot_camera(0,3) = Trans_Camera_in_robot_base.getOrigin().getX(); 
@@ -467,18 +473,26 @@ int main(int argc, char **argv)
                 
                 T_robot_camera.block(0,0,3,3) = q_robot_camera.toRotationMatrix(); 
                 
+                pcl::PointCloud<pcl::PointXYZRGB> temp;
                 std::cout << "将点云转到机器人你坐标系下: " << std::endl;
-                pcl::transformPointCloud( *cloud, all_cloud, T_robot_camera);
+                pcl::transformPointCloud( *cloud, temp, T_robot_camera);
+                
+                for(uint32_t cloud_index = 0; cloud_index < temp.size(); cloud_index++){
+                    if(temp[cloud_index].z > desk_height+0.015){
+                        all_cloud.push_back(temp[cloud_index]);
+                    }
+                }
+
                 std::cout << "all_cloud 点云总共有 " << all_cloud.size() << " 个点!" << std::endl;
                 // 将点云加入到总点云中
                 // *all_cloud += temp; 
-                
+                 
                 // 相机的坐标点
                 geometry_msgs::Point camera_pose;
-                camera_pose.x = Trans_Camera_in_robot_base.getOrigin().x();
-                camera_pose.y = Trans_Camera_in_robot_base.getOrigin().y();
-                camera_pose.z = Trans_Camera_in_robot_base.getOrigin().z();
-                // detect_grasp_req.request.cloud_indexed.cloud_sources.view_points.push_back(camera_pose); 
+                camera_pose.x = 0.0;
+                camera_pose.y = 0.0;
+                camera_pose.z = 0.0;
+                detect_grasp_req.request.cloud_indexed.cloud_sources.view_points.push_back(camera_pose); 
                 // detect_grasp_req.request.cloud_indexed.cloud_sources.camera_source[take_photo_i].data = 0;
             }
             
@@ -487,7 +501,7 @@ int main(int argc, char **argv)
             // -------------------------------- 
             // 将pcl格式点云转为pointcloud2格式 
             std::cout << "开始转换为pointcloud2点云: " << std::endl;
-            pcl::toROSMsg<pcl::PointXYZ>(all_cloud, kinect_pointcloud); // 这是个模板函数,编译器居然不会对没写模板参数报错 , 函数的参数方向也搞反了,怪不得导致pcl的点云也是空的了 调试到了凌晨2点
+            pcl::toROSMsg<pcl::PointXYZRGB>(all_cloud, kinect_pointcloud); // 这是个模板函数,编译器居然不会对没写模板参数报错 , 函数的参数方向也搞反了,怪不得导致pcl的点云也是空的了 调试到了凌晨2点
             
             detect_grasp_req.request.cloud_indexed.cloud_sources.cloud = kinect_pointcloud;
             kinect_pointcloud.header.frame_id = "robot_base";
@@ -520,7 +534,7 @@ int main(int argc, char **argv)
                 {
                     std::cout << "生成的夹爪位姿不合理,有可能会和桌面发生碰撞" << std::endl;
                 }
- 
+                std::cout << "目标夹爪的位姿: " << detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach << std::endl;
                 // --------------------------------
                 // step6.4 根据最优的夹爪位姿 计算出机械臂的末端状态,控制机械臂移动至目标位置
                 // --------------------------------
