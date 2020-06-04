@@ -2,10 +2,10 @@
 
 -----------------------------------
     作 者 : 南 山 二 毛
-    版 本 : Ver1.1
-    时 间 : 2020.05.20
+    版 本 : Ver1.2
+    时 间 : 2020.06.04
 -----------------------------------
-版本更改信息:增加抓取茶杯和连续抓取方块
+版本更改信息:增加杂乱物体的抓取
 
 
 -----------------------------------
@@ -21,11 +21,11 @@
 
 3, 机械臂运动应用层面的开发:
 
-   识别二维码立方体,并抓取,摆放;
+   识别二维码立方体,并抓取,摆放;(已经完成)
 
-   识别多个不同形状的杯子并抓取放置;
+   识别多个不同形状的杯子并抓取放置;(已完成)
 
-   基于gpd的深度学习机械臂末端位姿生成和抓取(开发中)
+   基于gpd的深度学习机械臂末端位姿生成和抓取(已完成)
 
 
 ------------------------------------
@@ -39,24 +39,28 @@
 
 4, ros功能包: aubo_arm_usr;
 
-5, 实物: 相机, 推荐kenectV2相机 或者realsense f200, 其它相机也可以;
+5, ros功能包: gpd_ros;
 
-6, 实物: aubo_i5机械臂机器控制器一套;
+6, ros功能包: iai_kinect;
 
-7, 实物: 大寰手抓一套;
+7, 实物: 相机, 推荐kenectV2相机 或者realsense f200, 其它相机也可以;
 
-8, 实物: 贴有apriltag标签的立方体若干个;
+8, 实物: aubo_i5机械臂机器控制器一套;
 
-9, 圆形口杯子若干;
+9, 实物: 大寰手抓一套;
 
-10, 下载其他包：ros-kinetic-ompl  libompl  ros-kinetic-ompl   ros-kinetic-ompl  ros-kinetic-moveit
+10, 实物: 贴有apriltag标签的立方体若干个;
+
+11, 圆形口杯子若干;
+
+12, 下载其他包：ros-kinetic-ompl  libompl  ros-kinetic-ompl   ros-kinetic-ompl  ros-kinetic-moveit
 
 - 各个模块简单使用： 
 
 ##### setup aubo-i5 arm
 
 ```
-roslaunch aubo_i5_moveit_config moveit_planning_execution.launch sim:=false robot_ip:=192.168.10.5
+roslaunch aubo_i5_moveit_config moveit_planning_execution.launch sim:=false robot_ip:=192.168.13.5
 ``` 
 ##### control DH AG-95 grasper
 
@@ -68,7 +72,28 @@ roslaunch aubo_i5_moveit_config moveit_planning_execution.launch sim:=false robo
 roslaunch dh_hand_driver dh_hand_controller.launch
 rosrun aubo_arm_usr hand_client 1 10 10
 ```
- 
+
+------------------------------------
+    结 果 展 示
+------------------------------------
+
+##### 基于二维码的抓取
+![](doc/img/grasp_cube1.png)
+
+![](doc/img/grasp_cube2.jpg)
+
+![](doc/img/grasp_cube3.jpg)
+
+##### 杯子的抓取
+![](doc/img/grasp_cup1.png)
+
+![](doc/img/grasp_cup2.jpg)
+
+##### 基于点云的神经网络生成夹爪,并进行物体的抓取
+![](doc/img/1.png)
+![](doc/img/2.png) 
+![](doc/img/3.png) 
+![](doc/img/4.png) 
 ------------------------------------
     运 行 顺 序
 ------------------------------------
@@ -82,7 +107,7 @@ rosrun aubo_arm_usr hand_client 1 10 10
 
 2, 启动roslaunch文件:
 
-   在终端中输入:$ roslaunch aubo_arm_usr pick_apriltag.launch 
+   在终端中输入:$ roslaunch aubo_arm_usr grasp_april_cube_steady_demo.launch 
 
    注意观察三点现象:
 

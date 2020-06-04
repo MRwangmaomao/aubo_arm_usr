@@ -719,8 +719,8 @@ void handle_tag_in_camera(const apriltag_arm_ros::AprilTagDetectionArray::ConstP
 
             // 查询距离最近tag的位姿
             Pose_QRcode_in_Camera = tag->detections[index_min].pose.pose.pose;
-            Trans_QRcode_in_Camera.setOrigin(tf::Vector3(Pose_QRcode_in_Camera.position.x-0.013,  //x轴修正-0.15
-                                                        Pose_QRcode_in_Camera.position.y-0.005,         //y轴修正0.1
+            Trans_QRcode_in_Camera.setOrigin(tf::Vector3(Pose_QRcode_in_Camera.position.x ,  //x轴修正-0.15
+                                                        Pose_QRcode_in_Camera.position.y ,         //y轴修正0.1
                                                         Pose_QRcode_in_Camera.position.z));
             Trans_QRcode_in_Camera.setRotation(tf::Quaternion(Pose_QRcode_in_Camera.orientation.x, 
                                                             Pose_QRcode_in_Camera.orientation.y,

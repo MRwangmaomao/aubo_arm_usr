@@ -167,8 +167,8 @@ int main(int argc, char **argv)
  
     // kinect消息接收
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
-    message_filters::Subscriber<sensor_msgs::Image> * rgb_subscriber_ = new message_filters::Subscriber<sensor_msgs::Image> (node_handle, "/kinect2/qhd/image_color_rect", 1);
-    message_filters::Subscriber<sensor_msgs::Image> * depth_subscriber_ = new message_filters::Subscriber<sensor_msgs::Image> (node_handle, "/kinect2/qhd/image_depth_rect", 1);
+    message_filters::Subscriber<sensor_msgs::Image> * rgb_subscriber_ = new message_filters::Subscriber<sensor_msgs::Image> (node_handle, "/kinect2/qhd/image_color_rect", 10);
+    message_filters::Subscriber<sensor_msgs::Image> * depth_subscriber_ = new message_filters::Subscriber<sensor_msgs::Image> (node_handle, "/kinect2/qhd/image_depth_rect", 10);
     message_filters::Synchronizer<sync_pol> * sync_ = new message_filters::Synchronizer<sync_pol> (sync_pol(10), *rgb_subscriber_, *depth_subscriber_);
     sync_->registerCallback(boost::bind(ImageCallback, _1, _2));
 
@@ -296,7 +296,7 @@ int main(int argc, char **argv)
     std::vector<double> joint_safe = {86.806916/57.3, -32.096968/57.3, -54.607499/57.3, 40.357928/57.3, -90.535073/57.3, -4.269872/57.3}; // 机器人的安全位置
     std::vector<double> joint_place_p1 = {86.8193/57.3, 23.1162/57.3, -72.1184/57.3, -1.72438/57.3, -90.5764/57.3, -5.0056/57.3}; // 机器人放置物体的位置
     std::vector<double> joint_group_seekbase1 = {82.205172/57.3, 9.583464/57.3, -34.987446/57.3, 35.508641/57.3, -89.745284/57.3, -4.482136/57.3}; // 搜索物体 拍照位置1
-    std::vector<double> joint_group_seekbase2 = {82.205172/57.3, 9.583464/57.3, -34.987446/57.3, 35.508641/57.3, -89.745284/57.3, -4.482136/57.3}; // 搜索物体 拍照位置2
+    std::vector<double> joint_group_seekbase2 = {39.885310/57.3, 11.211055/57.3, -35.072530/57.3, 50.559430/57.3, -74.059379/57.3, -29.007264/57.3}; // 搜索物体 拍照位置2
     std::vector<double> joint_group_seekbase3 = {82.205172/57.3, 9.583464/57.3, -34.987446/57.3, 35.508641/57.3, -89.745284/57.3, -4.482136/57.3}; // 搜索物体 拍照位置3
     std::vector<std::vector<double>> all_joint_group_seekbase;
     all_joint_group_seekbase.push_back(joint_group_seekbase1);
@@ -344,7 +344,7 @@ int main(int argc, char **argv)
     ros::Rate rate(1.0);
     int detect_times = 0;
     is_sub_kinect_cloud = false;
-    while(search_done == false)
+    while(search_done == false && ros::ok())
     {
         // 查找到二维码
         if(tags_find_flag)
@@ -367,15 +367,11 @@ int main(int argc, char **argv)
                 move_group.setJointValueTarget(all_joint_group_seekbase[take_photo_i]); 
                 move_group.plan(my_plan);
                 move_group.execute(my_plan);
+                ros::Duration(1.0).sleep(); // 移动完成后停留1s拍照
                 // visual_tools.prompt("next step");
                 
 
-                // step6.1.2 计算ROI大小
-                // 该变量设置为true, kinect相机图像回调函数接收图像
-                is_sub_kinect_cloud = true; 
-                //  接收到图像后值false 这里面需要等待1s,否则该变量会一直位于主函数栈中无法被消息回调函数修改
-                ros::Duration(1.0).sleep();
-                while(is_sub_kinect_cloud);
+                // step6.1.2 计算ROI大小 
                 // 采集一次图像,根据二维码坐标生成区域
                 std::cout << "检测到角点1:" << tags_corners[0].center_point[0] << " " << tags_corners[0].center_point[1] << std::endl;
                 std::cout << "检测到角点2:" << tags_corners[1].center_point[0] << " " << tags_corners[1].center_point[1] << std::endl;
@@ -422,13 +418,14 @@ int main(int argc, char **argv)
                         // std::cout << p << std::endl;
                     }
                 }
-                std::cout << "cloud的点云数量为: " << cloud->size() << std::endl;
+                // std::cout << "cloud的点云数量为: " << cloud->size() << std::endl;
 
 
                 // step6.1.3 计算得到QR在相机中的tf, 获得相机和基座的tf关系 QR在机器人中的tf关系
                 geometry_msgs::Pose Pose_QR_corner_in_Camera = tags_corners[0].pose.pose.pose;
-                Trans_QR_corner_in_Camera.setOrigin(tf::Vector3(Pose_QR_corner_in_Camera.position.x-0.013,  //x轴修正-0.15
-                                                            Pose_QR_corner_in_Camera.position.y-0.005,         //y轴修正0.1
+                Trans_QR_corner_in_Camera.setOrigin(tf::Vector3( 
+                                                            Pose_QR_corner_in_Camera.position.x,  //x轴修正-0.15
+                                                            Pose_QR_corner_in_Camera.position.y,         //y轴修正0.1
                                                             Pose_QR_corner_in_Camera.position.z));
                 Trans_QR_corner_in_Camera.setRotation(tf::Quaternion(Pose_QR_corner_in_Camera.orientation.x, 
                                                                 Pose_QR_corner_in_Camera.orientation.y,
@@ -474,19 +471,15 @@ int main(int argc, char **argv)
                 T_robot_camera.block(0,0,3,3) = q_robot_camera.toRotationMatrix(); 
                 
                 pcl::PointCloud<pcl::PointXYZRGB> temp;
-                std::cout << "将点云转到机器人你坐标系下: " << std::endl;
+                std::cout << "将点云转到机器人坐标系下: " << std::endl;
                 pcl::transformPointCloud( *cloud, temp, T_robot_camera);
                 
                 for(uint32_t cloud_index = 0; cloud_index < temp.size(); cloud_index++){
-                    if(temp[cloud_index].z > desk_height+0.015){
+                    if(temp[cloud_index].z > desk_height+0.020){
                         all_cloud.push_back(temp[cloud_index]);
                     }
-                }
+                }  // 将点云加入到总点云中  *all_cloud += temp; 
 
-                std::cout << "all_cloud 点云总共有 " << all_cloud.size() << " 个点!" << std::endl;
-                // 将点云加入到总点云中
-                // *all_cloud += temp; 
-                 
                 // 相机的坐标点
                 geometry_msgs::Point camera_pose;
                 camera_pose.x = 0.0;
@@ -495,83 +488,95 @@ int main(int argc, char **argv)
                 detect_grasp_req.request.cloud_indexed.cloud_sources.view_points.push_back(camera_pose); 
                 // detect_grasp_req.request.cloud_indexed.cloud_sources.camera_source[take_photo_i].data = 0;
             }
-            
-            // --------------------------------
-            // step6.2 合成detect_grasps的服务消息,请求服务后等待消息
-            // -------------------------------- 
-            // 将pcl格式点云转为pointcloud2格式 
-            std::cout << "开始转换为pointcloud2点云: " << std::endl;
-            pcl::toROSMsg<pcl::PointXYZRGB>(all_cloud, kinect_pointcloud); // 这是个模板函数,编译器居然不会对没写模板参数报错 , 函数的参数方向也搞反了,怪不得导致pcl的点云也是空的了 调试到了凌晨2点
-            
-            detect_grasp_req.request.cloud_indexed.cloud_sources.cloud = kinect_pointcloud;
-            kinect_pointcloud.header.frame_id = "robot_base";
-            point_cloud2_pub.publish(kinect_pointcloud);
-            // 采样点索引
-            // for(int64 i = 0; i <= 1000; i++)
-            //     detect_grasp_req.request.cloud_indexed.indices.data.push_back(i);
 
-            // 开始向服务发送请求    
-            if (gpd_ros_client.call(detect_grasp_req))
-            { 
+
+            std::cout << "all_cloud 点云总共有 " << all_cloud.size() << " 个点!" << std::endl;
+            if(all_cloud.size() > 1){  // 点云数量太少
                 // --------------------------------
-                // step6.3 收到服务响应后对数据进行解析,选取分数前两位,筛选夹爪的位姿是否满足需要
-                // --------------------------------
-                // 找到分数最高的结果
-                uint16_t grasp_num = detect_grasp_req.response.grasp_configs.grasps.size();
-                float score = -1;
-                uint16_t max_score_id = -1;
-                for(int i = 0; i < grasp_num; i++){
-                    if(detect_grasp_req.response.grasp_configs.grasps[i].score.data > score){
-                        max_score_id = i;
+                // step6.2 合成detect_grasps的服务消息,请求服务后等待消息
+                // -------------------------------- 
+                // 将pcl格式点云转为pointcloud2格式 
+                
+                pcl::toROSMsg<pcl::PointXYZRGB>(all_cloud, kinect_pointcloud); // 这是个模板函数,编译器居然不会对没写模板参数报错 , 函数的参数方向也搞反了,怪不得导致pcl的点云也是空的了 调试到了凌晨2点
+                std::cout << "转换为pointcloud2点云: " << std::endl;
+                detect_grasp_req.request.cloud_indexed.cloud_sources.cloud = kinect_pointcloud;
+                kinect_pointcloud.header.frame_id = "robot_base";
+                point_cloud2_pub.publish(kinect_pointcloud);
+                // 采样点索引
+                // for(int64 i = 0; i <= 1000; i++)
+                //     detect_grasp_req.request.cloud_indexed.indices.data.push_back(i);
+                std::cout << "等待gpd服务......: " << std::endl;
+                // 开始向服务发送请求    
+                if (gpd_ros_client.call(detect_grasp_req))
+                { 
+                    // --------------------------------
+                    // step6.3 收到服务响应后对数据进行解析,选取分数前两位,筛选夹爪的位姿是否满足需要
+                    // --------------------------------
+                    // 找到分数最高的结果
+                    uint16_t grasp_num = detect_grasp_req.response.grasp_configs.grasps.size();
+                    float score = -1;
+                    uint16_t max_score_id = -1;
+                    for(int i = 0; i < grasp_num; i++){
+                        if(detect_grasp_req.response.grasp_configs.grasps[i].score.data > score){
+                            max_score_id = i;
+                        }
                     }
-                }
-                std::cout << "最高分为:" << detect_grasp_req.response.grasp_configs.grasps[max_score_id].score.data << std::endl;
+                    std::cout << "最高分为:" << detect_grasp_req.response.grasp_configs.grasps[max_score_id].score.data << std::endl;
 
-                // 根据目前的信息进行筛选,比如电爪末端和中心不能低于桌子高度
-                if(desk_height < detect_grasp_req.response.grasp_configs.grasps[max_score_id].position.z - 0.02 ||
-                    desk_height < detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.z - 0.04 ||
-                    desk_height < detect_grasp_req.response.grasp_configs.grasps[max_score_id].binormal.z)
+                    // 根据目前的信息进行筛选,比如电爪末端和中心不能低于桌子高度
+                    if(desk_height > detect_grasp_req.response.grasp_configs.grasps[max_score_id].position.z - 0.02 ||
+                        desk_height > detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.z - 0.04 ||
+                        desk_height > detect_grasp_req.response.grasp_configs.grasps[max_score_id].binormal.z)
+                    {
+                        std::cout << "生成的夹爪位姿不合理,有可能会和桌面发生碰撞" << std::endl;
+                    }
+                    std::cout << "目标夹爪的位姿: " << detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach << std::endl;
+                    // --------------------------------
+                    // step6.4 根据最优的夹爪位姿 计算出机械臂的末端状态,控制机械臂移动至目标位置
+                    // --------------------------------
+                    // step6.4.1 计算夹爪的靠近位姿,这是一个安全过度点,计算机械臂的末端位姿,通过逆运动学求出六轴的角度,控制机械臂运动
+                    geometry_msgs::Pose dh_grasp_target_approach_pose;
+                    dh_grasp_target_approach_pose.position.x = detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.x;
+                    dh_grasp_target_approach_pose.position.y = detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.y;
+                    dh_grasp_target_approach_pose.position.z = detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.z;
+                    std::cout << "夹爪的最终生成位姿为:" << dh_grasp_target_approach_pose << std::endl;
+                    
+                    // step6.4.2 计算夹爪的最终位置,然后求出末端的位姿,求出通过逆运动学求出六轴的角度,控制机械臂运动
+                    
+
+                    // step6.4.3 控制电动夹爪闭合,抓取物体
+
+                    // step6.4.4 回到安全过渡位置
+
+                    // step6.4.5 移动到盒子上方
+
+                    // step6.4.6 电动夹爪松开
+
+                    /************************************* 一个抓取回合完成 ***********************************/
+                }
+                else // 请求失败,可能是消息格式不对,也可能是服务程序没能正常运行
                 {
-                    std::cout << "生成的夹爪位姿不合理,有可能会和桌面发生碰撞" << std::endl;
+                    ROS_ERROR("Failed to call service Service_demo");
+                    // return 1;
                 }
-                std::cout << "目标夹爪的位姿: " << detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach << std::endl;
-                // --------------------------------
-                // step6.4 根据最优的夹爪位姿 计算出机械臂的末端状态,控制机械臂移动至目标位置
-                // --------------------------------
-                // step6.4.1 计算夹爪的靠近位姿,这是一个安全过度点,计算机械臂的末端位姿,通过逆运动学求出六轴的角度,控制机械臂运动
-                geometry_msgs::Pose dh_grasp_target_approach_pose;
-                dh_grasp_target_approach_pose.position.x = detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.x;
-                dh_grasp_target_approach_pose.position.y = detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.y;
-                dh_grasp_target_approach_pose.position.z = detect_grasp_req.response.grasp_configs.grasps[max_score_id].approach.z;
-                
-                // step6.4.2 计算夹爪的最终位置,然后求出末端的位姿,求出通过逆运动学求出六轴的角度,控制机械臂运动
-                
-                // step6.4.3 控制电动夹爪闭合,抓取物体
-
-                // step6.4.4 回到安全过渡位置
-
-                // step6.4.5 移动到盒子上方
-
-                // step6.4.6 电动夹爪松开
-
-                /************************************* 一个抓取回合完成 ***********************************/
-            }
-            else // 请求失败,可能是消息格式不对,也可能是服务程序没能正常运行
-            {
-                ROS_ERROR("Failed to call service Service_demo");
-                // return 1;
-            } 
-
+            }else{
+                ROS_ERROR("gpd点云检测不好,请确保桌面是否摆放了物体");
+                detect_times += 10;
+            } // if(all_cloud.size() < 1)
+              
             detect_times++;
-            
-        }
+            all_cloud.clear();
+        }else{
+            std::cout << "无法看到二维码, 请移动确认相机视野中存在二维码!!!" << std::endl;
+        } // 查找到二维码 if(tags_find_flag)
+        
         
         if(detect_times >= 20 ){
-            break;        
+            search_done == true;        
         }
-
+        ros::spinOnce();
         ros::Duration(1.0).sleep(); // 休息1s继续抓取
-    }
+    } // while(search_done == false && ros::ok())
 
     printf("---系统结束--------\n");
      
@@ -657,8 +662,8 @@ void handle_tag_in_camera(const apriltag_ros::AprilTagDetectionArray::ConstPtr& 
  */
 void ImageCallback (const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD){
     
-    if(is_sub_kinect_cloud){
-        std::cout << "开始接收图像" << std::endl;
+    // if(is_sub_kinect_cloud){
+        // std::cout << "开始接收图像" << std::endl;
         cv_bridge::CvImageConstPtr cv_ptrRGB;
         try {
             cv_ptrRGB = cv_bridge::toCvShare(msgRGB);
@@ -677,7 +682,7 @@ void ImageCallback (const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::
         kinect_color = cv_ptrRGB->image.clone(); 
         kinect_depth = cv_ptrD->image.clone(); 
         is_sub_kinect_cloud = false; // 接收完图像之后值为false  
-    }
+    // }
 }
 
 /**

@@ -733,8 +733,8 @@ void handle_cup_in_camera(const geometry_msgs::Pose::ConstPtr &cup)
     //     }
 
     //     // 查询距离最近tag的位姿 
-        Trans_cup_in_base_link.setOrigin(tf::Vector3(cup->position.x+0.013,  //x轴修正-0.15
-                                                    cup->position.y-0.005,         //y轴修正0.1
+        Trans_cup_in_base_link.setOrigin(tf::Vector3(cup->position.x ,  //x轴修正-0.15
+                                                    cup->position.y ,         //y轴修正0.1
                                                     cup->position.z));
         Trans_cup_in_base_link.setRotation(tf::Quaternion(cup->orientation.x, 
                                                         cup->orientation.y,
@@ -745,7 +745,7 @@ void handle_cup_in_camera(const geometry_msgs::Pose::ConstPtr &cup)
     //     object_v = cup->detections[index_min].center_point[1] - 540.0/2.0;
     //     object_update = true;
 
-        object_flag = true;
+    object_flag = true;
     //     loseCnt = 0;
     // }
     // else
@@ -803,26 +803,26 @@ int find_nearest_joint_index(double* q_sols, int slov_num, double* q_ref)
     int min_index = 0;
     for (index = 0; index < slov_num; index++)
     {
-       error[index] = std::fabs(q_sols[index*6 + 0] - q_ref[0])
-                    + std::fabs(q_sols[index*6 + 1] - q_ref[1])
-                    + std::fabs(q_sols[index*6 + 2] - q_ref[2])
-                    + std::fabs(q_sols[index*6 + 3] - q_ref[3])
-                    + std::fabs(q_sols[index*6 + 4] - q_ref[4])
-                    + std::fabs(q_sols[index*6 + 5] - q_ref[5]);
-       if (index == 0)
-       {
-           err_min = error[index];
-           min_index = 0;
-       }
-       else
-       {
-           if (err_min > error[index])
-           {
-               err_min = error[index];
-               min_index = index;
-           }
-       }
-       // printf("error[%d] = %1.4f \n", index, error[index]);
+        error[index] = std::fabs(q_sols[index*6 + 0] - q_ref[0])
+                        + std::fabs(q_sols[index*6 + 1] - q_ref[1])
+                        + std::fabs(q_sols[index*6 + 2] - q_ref[2])
+                        + std::fabs(q_sols[index*6 + 3] - q_ref[3])
+                        + std::fabs(q_sols[index*6 + 4] - q_ref[4])
+                        + std::fabs(q_sols[index*6 + 5] - q_ref[5]);
+        if (index == 0)
+        {
+            err_min = error[index];
+            min_index = 0;
+        }
+        else
+        {
+            if (err_min > error[index])
+            {
+                err_min = error[index];
+                min_index = index;
+            }
+        }
+        // printf("error[%d] = %1.4f \n", index, error[index]);
     }
     return min_index;
 }
